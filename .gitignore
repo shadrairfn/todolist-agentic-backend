@@ -2,4 +2,13 @@
 frontend-react/
 .venv/
 alembic.ini
+
+# Python cache & temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
 migrations/
