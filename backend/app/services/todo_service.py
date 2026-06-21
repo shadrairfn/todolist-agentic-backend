@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Query
 from sqlmodel import Session, select
 from app.db.session import get_session
 from app.models.todo import Todo, TodoCreate, TodoUpdate
@@ -17,7 +17,7 @@ def read_todos(
     return todos
 
 
-def read_todo(
+def read_todo_by_id(
     todo_id: UUID, 
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
@@ -31,26 +31,21 @@ def read_todo(
     return todo
 
 
-def search_todo(
-    title: str = None, 
-    description: str = None, 
-    deadline: str = None, 
-    completed: bool = False,
-    session: Session = Depends(get_session), 
+def search_todos(
+    q: str = Query(..., min_length=1, description="Kata kunci pencarian"),
+    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        if title:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.title == title)).all()
-        elif description:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.description == description)).all()
-        elif deadline:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.deadline == deadline)).all()
-        elif completed:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.completed == completed)).all()
-    else:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-    return todos
+    """Mencari todo berdasarkan title atau description yang mengandung kata kunci."""
+    statement = select(Todo).where(
+        Todo.user_id == current_user.id,
+        (
+            Todo.title.ilike(f"%{q}%") |
+            Todo.description.ilike(f"%{q}%")
+        )
+    )
+    results = session.exec(statement).all()
+    return results
 
 
 def create_todo(
@@ -73,17 +68,23 @@ def create_todo(
 
 
 def update_todo(
+    todo_id: UUID,
     todo: TodoUpdate, 
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
+    print(current_user)
+    db_todo = session.get(Todo, todo_id)
+    if not db_todo:
+        raise HTTPException(status_code=404, detail="ToDo tidak ditemukan")
+    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
+        if db_todo.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke ToDo ini")
+
     if not isinstance(todo, Todo):
-        db_todo = Todo(**todo.model_dump())
+        db_todo = Todo(**todo.model_dump(exclude_unset=True))
     else:
         db_todo = todo
-        
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        db_todo.user_id = current_user.id
 
     session.add(db_todo)
     session.commit()

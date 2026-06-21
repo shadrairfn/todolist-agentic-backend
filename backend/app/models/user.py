@@ -4,12 +4,14 @@ from sqlmodel import SQLModel, Field, Relationship, text
 
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
-    password: str
     name: Optional[str] = None
 
 class UserCreate(UserBase):
-    pass 
+    password: str
 
+class UserRead(UserBase):
+    id: UUID
+    
 class UserUpdate(SQLModel):
     email: Optional[str] = None
     password: Optional[str] = None
@@ -23,6 +25,7 @@ class User(UserBase, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("gen_random_uuid()")}
     )
+    password: str
     
     # Relationship
-    todos: List["Todo"] = Relationship(back_populates="user")
+    todos: List["Todo"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})

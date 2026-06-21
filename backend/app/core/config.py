@@ -8,4 +8,13 @@ class Settings:
         "DATABASE_URL"
     )
 
+    # JWT Configuration
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-me")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+    REFRESH_TOKEN_EXPIRE_DAY: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAY", 7))
+
+    # Groq API Key (optional for other features, but good to have here if needed)
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+
 settings = Settings()

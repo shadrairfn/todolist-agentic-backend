@@ -42,4 +42,4 @@ app.include_router(todos_router)
 app.include_router(user_router)
 app.include_router(agentic_ai_router)
 
-app.mount("/", StaticFiles(directory="frontend-react", html=True), name="frontend") # Sesuaikan direktori frontendnya
+# app.mount("/", StaticFiles(directory="frontend-react", html=True), name="frontend") # Sesuaikan direktori frontendnya

@@ -4,11 +4,7 @@ from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from app.crud import todos_crud
 from typing import Optional
-import getpass
-import os
-
-if "GROQ_API_KEY" not in os.environ:
-    os.environ["GROQ_API_KEY"] = getpass.getpass("Enter your Groq API key: ")
+from app.core.config import settings
 
 @tool
 def manage_todo_list(
@@ -187,7 +183,7 @@ def manage_todo_list(
             session.commit()
             return {"message": f"ToDo dengan judul '{db_todo.title}' berhasil dihapus!"}
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=settings.GROQ_API_KEY)
 tools = [manage_todo_list]
 
 prompt = ChatPromptTemplate.from_messages([

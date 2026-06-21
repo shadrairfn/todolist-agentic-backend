@@ -4,13 +4,12 @@ from sqlmodel import Session, select
 from app.db.session import get_session
 import app.models as models
 from app.crud import todos_crud
-from app.controllers import todos_controller
+import app.services.todo_service as todo_service
 from app.models.todo import Todo, TodoUpdate, TodoCreate
 from app.core.security import get_current_user
 from app.models.user import User
 import uuid
 
-# 1. Inisialisasi APIRouter
 router = APIRouter(
     prefix="/todos",
     tags=["Todos"]
@@ -22,37 +21,28 @@ def search_todos(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    """Mencari todo berdasarkan title atau description yang mengandung kata kunci."""
-    statement = select(Todo).where(
-        Todo.user_id == current_user.id,
-        (
-            Todo.title.ilike(f"%{q}%") |
-            Todo.description.ilike(f"%{q}%")
-        )
-    )
-    results = session.exec(statement).all()
-    return results
+    return todo_service.search_todos(q, session, current_user)
 
 @router.post("/", response_model=Todo)
 def create_todo(
     todo: TodoCreate, 
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)):
-    return todos_crud.create_todo(todo, session, current_user)
+    return todo_service.create_todo(todo, session, current_user)
 
 @router.get("/", response_model=list[models.Todo])
 def read_todos(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)):
-    return todos_crud.read_todos(session, current_user)
+    return todo_service.read_todos(session, current_user)
 
 @router.get("/{todo_id}", response_model=models.Todo)
-def read_todo(todo_id: uuid.UUID, session: Session = Depends(get_session)):
-    return todos_crud.read_todo(todo_id, session)
+def read_todo(todo_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    return todo_service.read_todo_by_id(todo_id, session, current_user)
 
 @router.delete("/{todo_id}")
-def delete_todo(todo_id: uuid.UUID, session: Session = Depends(get_session)):
-    return todos_crud.delete_todo(todo_id, session)
+def delete_todo(todo_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    return todo_service.delete_todo(todo_id, session, current_user)
 
 @router.patch("/{todo_id}", response_model=models.Todo)
 def edit_todo(
@@ -61,4 +51,5 @@ def edit_todo(
     session: Session = Depends(get_session), 
     current_user: User = Depends(get_current_user)
 ):
-    return todos_controller.edit_todo(todo_id, todo, session, current_user)
+    print(current_user)
+    return todo_service.update_todo(todo_id, todo, session, current_user)

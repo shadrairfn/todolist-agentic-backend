@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from app.db.session import get_session
 import app.models as models
 from app.models.todo import TodoUpdate, Todo
-import app.crud.todos_crud as todo_crud
+import app.services.todo_service as todo_service
 import uuid
 
 def read_todos(session: Session = Depends(get_session)):
@@ -14,7 +14,7 @@ def read_todo(todo_id: int, session: Session = Depends(get_session)):
     todo = session.get(Todo, todo_id)
     if not todo:
         raise HTTPException(status_code=404, detail="ToDo tidak ditemukan")
-    return todo
+    return todo 
 
 def delete_todo(todo_id: int, session: Session = Depends(get_session)):
     todo = session.get(models.Todo, todo_id)
@@ -32,7 +32,7 @@ def edit_todo(todo_id: uuid.UUID, todo_update: TodoUpdate, session: Session, cur
     update_data = todo_update.model_dump(exclude_unset=True)
     db_todo.sqlmodel_update(update_data)
     
-    return todo_crud.update_todo(db_todo, session, current_user)
+    return todo_service.update_todo(db_todo, session, current_user)
 
 def toggle_todo(todo_id: int, completed: bool, session: Session = Depends(get_session)):
     todo = session.get(models.Todo, todo_id)
