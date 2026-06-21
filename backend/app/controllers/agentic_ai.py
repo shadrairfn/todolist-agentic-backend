@@ -22,23 +22,30 @@ def manage_todo_list(
 ):
     """
     Gunakan fungsi ini untuk mengelola jadwal harian atau todo list user (membuat, mengambil/mencari, mengedit, atau menghapus).
+    Argumen 'user_id' (ID user aktif) SELALU WAJIB diisi untuk semua tipe action (POST, GET, PATCH, DELETE).
+
     - Jika 'action_method' berisi 'POST', fungsi akan membuat/menyimpan ToDo baru.
-      Argumen 'user_id' (ID user aktif) dan 'title' (judul tugas) WAJIB diisi.
+      Argumen 'title' (judul tugas) WAJIB diisi.
       Argumen lainnya ('description', 'deadline', 'completed', 'is_daily', 'is_weekly', 'is_monthly', 'is_yearly') opsional.
-    - Jika 'action_method' berisi 'GET', fungsi akan mengambil seluruh ToDo list milik user yang bersangkutan. Argumen 'user_id' WAJIB diisi.
+    - Jika 'action_method' berisi 'GET', fungsi akan mengambil seluruh ToDo list milik user.
     - Jika 'action_method' berisi 'PATCH', fungsi akan mengedit/mengupdate ToDo yang sudah ada.
       Argumen 'todo_id' (UUID ToDo yang akan diedit) WAJIB diisi.
-      Argumen lainnya ('title', 'description', 'deadline', 'completed', 'is_daily', 'is_weekly', 'is_monthly', 'is_yearly') diisi hanya untuk field yang ingin diubah.
     - Jika 'action_method' berisi 'DELETE', fungsi akan menghapus ToDo yang sudah ada.
       Argumen 'todo_id' (UUID ToDo yang akan dihapus) WAJIB diisi.
     """
+    if not user_id:
+        return "Error: Argumen 'user_id' wajib diisi untuk semua tipe action."
+
     from app.db.session import engine
     from sqlmodel import Session, select
     from app.models.todo import Todo
     from app.models.user import User
     from uuid import UUID
 
-    user_uuid = UUID(user_id)
+    try:
+        user_uuid = UUID(user_id)
+    except ValueError:
+        return f"Error: Format user_id tidak valid ({user_id})"
 
     import datetime
 
@@ -201,10 +208,11 @@ agent = create_tool_calling_agent(
 agent_executor = AgentExecutor(
     agent=agent, 
     tools=tools, 
-    verbose=True
+    verbose=True,
+    return_intermediate_steps=True
 )
 
-def jalankan_agent(pesan_user: str, user_id: str = None):
+def jalankan_agent(chat: str, user_id: str = None):
     """Fungsi jembatan untuk dipanggil oleh server backend"""
     if not user_id:
         from app.db.session import engine
@@ -220,7 +228,21 @@ def jalankan_agent(pesan_user: str, user_id: str = None):
     import datetime
     sekarang = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    konteks_pesan = f"Waktu Sekarang (Today's Datetime): {sekarang}\nUser ID Aktif: {user_id}\n\nPertanyaan User: {pesan_user}"
+    konteks_pesan = f"Waktu Sekarang (Today's Datetime): {sekarang}\nUser ID Aktif: {user_id}\n\nPertanyaan User: {chat}"
     
     respon = agent_executor.invoke({"input": konteks_pesan})
-    return respon["output"]
+    
+    tool_calls_metadata = []
+    if "intermediate_steps" in respon:
+        for action, observation in respon["intermediate_steps"]:
+            # action adalah objek AgentAction, observation adalah output dari tool
+            tool_calls_metadata.append({
+                "tool_name": action.tool,
+                "input_json": action.tool_input,
+                "output_json": observation
+            })
+            
+    return {
+        "reply": respon["output"],
+        "tool_calls": tool_calls_metadata
+    }

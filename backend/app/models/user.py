@@ -28,4 +28,4 @@ class User(UserBase, table=True):
     password: str
     
     # Relationship
-    todos: List["Todo"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    todo: List["Todo"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
