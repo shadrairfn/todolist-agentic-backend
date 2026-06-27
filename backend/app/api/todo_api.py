@@ -51,5 +51,4 @@ def edit_todo(
     session: Session = Depends(get_session), 
     current_user: User = Depends(get_current_user)
 ):
-    print(current_user)
     return todo_service.update_todo(todo_id, todo, session, current_user)

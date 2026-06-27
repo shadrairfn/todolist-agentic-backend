@@ -46,7 +46,7 @@ def search_todos(
     )
     results = session.exec(statement).all()
     return results
-
+ 
 
 def create_todo(
     todo: TodoCreate, 
@@ -73,7 +73,6 @@ def update_todo(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    print(current_user)
     db_todo = session.get(Todo, todo_id)
     if not db_todo:
         raise HTTPException(status_code=404, detail="ToDo tidak ditemukan")
@@ -82,7 +81,8 @@ def update_todo(
             raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke ToDo ini")
 
     if not isinstance(todo, Todo):
-        db_todo = Todo(**todo.model_dump(exclude_unset=True))
+        update_data = todo.model_dump(exclude_unset=True)
+        db_todo.sqlmodel_update(update_data)
     else:
         db_todo = todo
 

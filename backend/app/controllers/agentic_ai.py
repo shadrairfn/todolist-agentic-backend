@@ -2,7 +2,7 @@ from langchain_core.tools import tool
 from langchain_groq import ChatGroq
 from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from app.crud import todos_crud
+from app.services import todo_service
 from typing import Optional
 from app.core.config import settings
 
@@ -104,11 +104,11 @@ def manage_todo_list(
                 is_yearly=is_yearly if is_yearly is not None else False,
                 user_id=user_uuid
             )
-            return todos_crud.create_todo(db_todo, session)
+            return todo_service.create_todo(db_todo, session)
         elif action_method == "GET":
             from app.models.user import User
             user = session.get(User, user_uuid)
-            todos = todos_crud.read_todos(session, current_user=user)
+            todos = todo_service.read_todos(session, current_user=user)
             return [
                 {
                     "id": str(t.id),
@@ -127,6 +127,7 @@ def manage_todo_list(
                 return "Error: Argumen 'todo_id' wajib diisi untuk melakukan update/edit."
             
             todo_uuid = UUID(todo_id)
+            user_obj = session.get(User, user_uuid)
             db_todo = session.get(Todo, todo_uuid)
             if not db_todo:
                 return f"Error: ToDo dengan ID {todo_id} tidak ditemukan."
@@ -148,32 +149,8 @@ def manage_todo_list(
                 
             if completed is not None:
                 db_todo.completed = completed
-            if is_daily is not None:
-                db_todo.is_daily = is_daily
-            if is_weekly is not None:
-                db_todo.is_weekly = is_weekly
-            if is_monthly is not None:
-                db_todo.is_monthly = is_monthly
-            if is_yearly is not None:
-                db_todo.is_yearly = is_yearly
-            
-            session.add(db_todo)
-            session.commit()
-            session.refresh(db_todo)
-            return {
-                "message": "ToDo berhasil diperbarui!",
-                "todo": {
-                    "id": str(db_todo.id),
-                    "title": db_todo.title,
-                    "description": db_todo.description,
-                    "deadline": str(db_todo.deadline) if db_todo.deadline else None,
-                    "completed": db_todo.completed,
-                    "is_daily": db_todo.is_daily,
-                    "is_weekly": db_todo.is_weekly,
-                    "is_monthly": db_todo.is_monthly,
-                    "is_yearly": db_todo.is_yearly
-                }
-            }
+
+            return todo_service.update_todo(todo_uuid, db_todo, session, user_obj)
         elif action_method == "DELETE":
             if not todo_id:
                 return "Error: Argumen 'todo_id' wajib diisi untuk melakukan penghapusan."
@@ -212,7 +189,7 @@ agent_executor = AgentExecutor(
     return_intermediate_steps=True
 )
 
-def jalankan_agent(chat: str, user_id: str = None):
+def jalankan_agent(chat: str, user_id: str = None, recent_message: list = [], recent_tool_calls: list = []):
     """Fungsi jembatan untuk dipanggil oleh server backend"""
     if not user_id:
         from app.db.session import engine
@@ -228,7 +205,29 @@ def jalankan_agent(chat: str, user_id: str = None):
     import datetime
     sekarang = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    konteks_pesan = f"Waktu Sekarang (Today's Datetime): {sekarang}\nUser ID Aktif: {user_id}\n\nPertanyaan User: {chat}"
+    konteks_pesan = f"""
+    Waktu Sekarang (Today's Datetime): {sekarang}
+
+    System:
+    Kamu adalah agent todo list yang digunakan untuk mengelola jadwal harian/ToDo user.
+    Gunakan tool yang tersedia untuk menyimpan, mengambil, mengedit (PATCH), atau menghapus (DELETE) jadwal harian/ToDo user. 
+    Saat user meminta untuk mengedit atau menghapus tugas yang ada, 
+    Anda WAJIB memanggil tool dengan 'action_method' GET terlebih dahulu untuk mencari tugas tersebut dan mendapatkan UUID ('id') tugasnya, 
+    kemudian panggil tool kembali dengan 'action_method' PATCH atau DELETE dan sertakan UUID tersebut di parameter 'todo_id'. 
+    Pastikan untuk selalu meneruskan 'user_id' (ID User Aktif) ke dalam parameter 'user_id' saat memanggil tool!
+
+    Current user:
+    user_id = {user_id}
+
+    Recent messages:
+    {recent_message}
+
+    Recent tool calls:
+    {recent_tool_calls}
+
+    Current user message:
+    {chat}
+    """
     
     respon = agent_executor.invoke({"input": konteks_pesan})
     

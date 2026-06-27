@@ -36,6 +36,14 @@ def read_session(session_id: UUID, session: Session= Depends(get_session), curre
 def delete_session(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
     return agentic_service.delete_session_by_id(session_id, session, current_user)
 
+@router.get("/sessions/{session_id}/message")
+def get_recent_message(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.recent_message(session_id, session, current_user)
+
+@router.get("/sessions/{session_id}/toolcalls")
+def get_recent_tool_calls(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.recent_tool_calls(session_id, session, current_user)
+
 @router.post("/sessions/{session_id}/chat")
 async def chat_endpoint(
     request: ChatRequest,
@@ -56,7 +64,10 @@ async def chat_endpoint(
     session.commit()
     session.refresh(user_message)
 
-    hasil_agent = jalankan_agent(request.message, user_id=str(current_user.id))
+    recent_messages = agentic_service.recent_message(session_id, session, current_user)
+    recent_tool_calls = agentic_service.recent_tool_calls(session_id, session, current_user)
+
+    hasil_agent = jalankan_agent(request.message, user_id=str(current_user.id), recent_message=recent_messages, recent_tool_calls=recent_tool_calls)
     reply_text = hasil_agent["reply"]
     tool_calls = hasil_agent["tool_calls"]
 
