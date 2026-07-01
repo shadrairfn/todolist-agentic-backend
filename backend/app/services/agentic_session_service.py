@@ -60,6 +60,20 @@ def get_session_by_id(
     return db_session
 
 
+def update_session(
+    session_id: UUID,
+    title: str,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    db_session = get_session_by_id(session_id, session, current_user)
+    db_session.title = title
+    session.add(db_session)
+    session.commit()
+    session.refresh(db_session)
+    return db_session
+
+
 def delete_session_by_id(
     session_id: UUID,
     session: Session = Depends(get_session),

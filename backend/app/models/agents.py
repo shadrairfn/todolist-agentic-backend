@@ -16,11 +16,11 @@ class AgentSessionUpdate(AgentSessionBase):
 
 class AgentSession(AgentSessionBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    user_id: UUID = Field(foreign_key="user.id", index=True)
+    user_id: UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
 
 class AgentMessageBase(SQLModel):
-    session_id: UUID = Field(foreign_key="agentsession.id", index=True)
-    user_id: UUID = Field(foreign_key="user.id", index=True)
+    session_id: UUID = Field(foreign_key="agentsession.id", ondelete="CASCADE", index=True)
+    user_id: UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
     role: str
     content: str
     metadata_json: dict = Field(default_factory=dict, sa_column=Column(JSON))
@@ -30,8 +30,8 @@ class AgentMessage(AgentMessageBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
 
 class AgentToolCallBase(SQLModel):
-    session_id: UUID = Field(foreign_key="agentsession.id", index=True)
-    user_id: UUID = Field(foreign_key="user.id", index=True)
+    session_id: UUID = Field(foreign_key="agentsession.id", ondelete="CASCADE", index=True)
+    user_id: UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
     tool_name: str
     action: str
     input_json: dict = Field(default_factory=dict, sa_column=Column(JSON))
@@ -45,8 +45,8 @@ class AgentToolCall(AgentToolCallBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
 
 class PendingActionBase(SQLModel):
-    user_id: UUID = Field(foreign_key="user.id", index=True)
-    session_id: UUID = Field(foreign_key="agentsession.id", index=True)
+    user_id: UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
+    session_id: UUID = Field(foreign_key="agentsession.id", ondelete="CASCADE", index=True)
     action_type: str = Field(index=True)
     payload_json: dict = Field(default_factory=dict, sa_column=Column(JSON))
     preview_json: dict = Field(default_factory=dict, sa_column=Column(JSON))

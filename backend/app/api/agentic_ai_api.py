@@ -14,6 +14,9 @@ from app.services.agentic_chat_service import run_agent_chat
 class ChatRequest(BaseModel):
     message: str
 
+class SessionUpdate(BaseModel):
+    title: str
+
 
 router = APIRouter(
     prefix="/agentic",      
@@ -31,6 +34,10 @@ def get_sessions(session: Session= Depends(get_session), current_user: User = De
 @router.get("/sessions/{session_id}")
 def read_session(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
     return agentic_service.get_session_by_id(session_id, session, current_user)
+
+@router.patch("/sessions/{session_id}")
+def update_session(session_id: UUID, data: SessionUpdate, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.update_session(session_id, data.title, session, current_user)
 
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
@@ -57,7 +64,6 @@ async def chat_endpoint(
 def get_chat_history(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
     return agentic_service.get_all_chat_user(session_id, session, current_user)
 
-@router.delete("/session/{session_id}/chat")
 @router.delete("/sessions/{session_id}/chat")
 def delete_chat_history(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
     return agentic_service.delete_chat_history(session_id, session, current_user)
