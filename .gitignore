@@ -2,7 +2,7 @@
 frontend-react/
 .venv/
 alembic.ini
-
+frontend/
 # Python cache & temporary files
 __pycache__/
 *.pyc
