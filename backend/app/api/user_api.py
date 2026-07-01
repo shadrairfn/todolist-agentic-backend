@@ -6,7 +6,7 @@ from uuid import UUID
 from app.core.security import get_current_user
 from app.db.session import get_session
 from app.models.dto.user_dto import PasswordChangeRequest, ProfileUpdateRequest, Token
-from app.models.user import User, UserCreate, UserRead
+from app.models.user import User, UserCreate, UserRead, UserLogin
 from app.services.user_service import (
     change_password,
     create_user,
@@ -54,17 +54,18 @@ def read_user(user_id: UUID, session: Session = Depends(get_session)):
 @router.post("/login", response_model=Token)
 def login_user(
     response: Response,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    data: UserLogin,
     session: Session = Depends(get_session),
 ):
-    return login(response=response, form_data=form_data, session=session)
+    return login(response=response, data=data, session=session)
 
 @router.post("/refresh")
 def refresh(
+    response: Response,
     refresh_token: str | None = Cookie(default=None),
     session: Session = Depends(get_session),
 ):
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token tidak ditemukan di cookie")
         
-    return refresh_access_token(refresh_token=refresh_token, session=session)
+    return refresh_access_token(refresh_token=refresh_token, session=session, response=response)

@@ -1,3 +1,4 @@
+from fastapi import Response
 import jwt
 from typing import Optional
 from datetime import datetime, timedelta
@@ -31,7 +32,7 @@ def create_token(data: dict, expires_delta: Optional[timedelta] = None, type: st
 def get_access_token(user_id: str):
     return create_token(data={"sub": user_id})
 
-def refresh_access_token(refresh_token: str, session: Session = Depends(get_session)) -> str:
+def refresh_access_token(response: Response, refresh_token: str, session: Session = Depends(get_session)) -> str:
     credentials_exception = HTTPException(status_code=401, detail="Invalid refresh token")
     try:
         if not settings.SECRET_KEY:
@@ -42,6 +43,14 @@ def refresh_access_token(refresh_token: str, session: Session = Depends(get_sess
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
         )
+
+        # response.delete_cookie(
+        #     key="refresh_token",
+        #     httponly=True,
+        #     secure=True,
+        #     samesite="strict",
+        #     path="/",
+        # )
     except jwt.PyJWTError:
         raise credentials_exception
 
@@ -65,6 +74,18 @@ def refresh_access_token(refresh_token: str, session: Session = Depends(get_sess
         data={"sub": str(user.id)},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         type="access",
+    )
+
+    refresh_token = create_token(data={"sub": str(user.id)}, type="refresh")
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="strict",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAY * 24 * 60 * 60, # Konversi hari ke detik
+        path="/"
     )
 
     return {

@@ -8,7 +8,7 @@ from app.core.hashing import get_password_hash, verify_password
 from app.core.security import create_token, get_current_user
 from app.db.session import get_session
 from app.models.dto.user_dto import PasswordChangeRequest, ProfileUpdateRequest
-from app.models.user import User, UserCreate, UserRead
+from app.models.user import User, UserCreate, UserRead, UserLogin
 
 def create_user(user: UserCreate, session: Session = Depends(get_session)) -> User:
     existing_user = session.exec(select(User).where(User.email == user.email)).first()
@@ -31,13 +31,13 @@ def create_user(user: UserCreate, session: Session = Depends(get_session)) -> Us
 
 def login(
     response: Response,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    data: UserLogin,
     session: Session = Depends(get_session),
 ):
-    statement = select(User).where(User.email == form_data.username)
+    statement = select(User).where(User.email == data.name)
     db_user = session.exec(statement).first()
 
-    if not db_user or not verify_password(form_data.password, db_user.password):
+    if not db_user or not verify_password(data.password, db_user.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email atau password salah",

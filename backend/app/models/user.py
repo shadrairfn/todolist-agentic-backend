@@ -6,6 +6,10 @@ class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
     name: Optional[str] = None
 
+class UserLogin(SQLModel):
+    name: Optional[str] = None
+    password: str
+
 class UserCreate(UserBase):
     password: str
 
