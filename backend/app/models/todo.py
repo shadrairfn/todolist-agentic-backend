@@ -37,4 +37,4 @@ class Todo(TodoBase, table=True):
     user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
     
     # Relationship
-    user: Optional["User"] = Relationship(back_populates="todo")
+    user: Optional["User"] = Relationship(back_populates="todos")

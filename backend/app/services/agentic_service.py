@@ -3,11 +3,13 @@ from pydantic import BaseModel
 from typing import Optional
 from app.core.security import get_current_user
 from app.models.user import User
-from app.models.agents import AgentSessionCreate, AgentSession, AgentMessage, AgentToolCall
-from sqlmodel import Session
+from app.models.agents import AgentSessionCreate, AgentSession, AgentMessage, AgentToolCall, PendingAction
+from app.models.todo import Todo
+from sqlmodel import Session, select
 from app.db.session import get_session
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
+import app.services.todo_service as todo_service
 
 def create_sessions(
     data: AgentSessionCreate, 
@@ -160,3 +162,159 @@ def recent_tool_calls(
                 })
     
     return response
+
+def create_pending_action(
+    action_type: str,
+    payload_json: dict,
+    preview_json: dict,
+    session_id: UUID,
+    session: Session,
+    current_user: User,
+    expires_in_minutes: int = 10,
+):
+    get_session_by_id(session_id, session, current_user)
+    pending_action = PendingAction(
+        user_id=current_user.id,
+        session_id=session_id,
+        action_type=action_type,
+        payload_json=payload_json,
+        preview_json=preview_json,
+        status="pending",
+        expires_at=datetime.utcnow() + timedelta(minutes=expires_in_minutes),
+    )
+    session.add(pending_action)
+    session.commit()
+    session.refresh(pending_action)
+    return pending_action
+
+def get_pending_actions(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    statement = select(PendingAction).where(
+        PendingAction.user_id == current_user.id,
+        PendingAction.status == "pending",
+    ).order_by(PendingAction.created_at.desc())
+    return session.exec(statement).all()
+
+def get_pending_action_by_id(
+    pending_action_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    pending_action = session.get(PendingAction, pending_action_id)
+    if not pending_action:
+        raise HTTPException(status_code=404, detail="Pending action tidak ditemukan")
+    if pending_action.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke pending action ini")
+    return pending_action
+
+def cancel_pending_action(
+    pending_action_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    pending_action = get_pending_action_by_id(pending_action_id, session, current_user)
+    if pending_action.status != "pending":
+        raise HTTPException(status_code=400, detail="Pending action sudah tidak aktif")
+
+    pending_action.status = "cancelled"
+    pending_action.cancelled_at = datetime.utcnow()
+    session.add(pending_action)
+    session.commit()
+    session.refresh(pending_action)
+    return {"message": "Aksi dibatalkan", "pending_action": pending_action}
+
+def _execute_delete_todo(payload: dict, session: Session, current_user: User):
+    todo_id = UUID(payload["todo_id"])
+    return todo_service.delete_todo(todo_id, session, current_user)
+
+def _execute_bulk_delete_todos(payload: dict, session: Session, current_user: User):
+    todo_ids = payload.get("todo_ids") or []
+    deleted = []
+    for raw_todo_id in todo_ids:
+        todo_id = UUID(raw_todo_id)
+        todo = session.get(Todo, todo_id)
+        if not todo:
+            raise HTTPException(status_code=404, detail=f"ToDo {todo_id} tidak ditemukan")
+        if todo.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail=f"Anda tidak memiliki akses ke ToDo {todo_id}")
+        deleted.append({"id": str(todo.id), "title": todo.title})
+        session.delete(todo)
+    session.commit()
+    return {"message": f"{len(deleted)} ToDo berhasil dihapus", "deleted_count": len(deleted), "deleted": deleted}
+
+ACTION_EXECUTORS = {
+    "delete_todo": _execute_delete_todo,
+    "bulk_delete_todos": _execute_bulk_delete_todos,
+}
+
+def confirm_pending_action(
+    pending_action_id: UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    pending_action = get_pending_action_by_id(pending_action_id, session, current_user)
+    if pending_action.status != "pending":
+        raise HTTPException(status_code=400, detail="Pending action sudah tidak aktif")
+    if pending_action.expires_at < datetime.utcnow():
+        pending_action.status = "expired"
+        session.add(pending_action)
+        session.commit()
+        raise HTTPException(status_code=400, detail="Pending action sudah kedaluwarsa")
+
+    executor = ACTION_EXECUTORS.get(pending_action.action_type)
+    if not executor:
+        raise HTTPException(status_code=400, detail="Action tidak didukung")
+
+    try:
+        result = executor(pending_action.payload_json, session, current_user)
+        pending_action.status = "confirmed"
+        pending_action.confirmed_at = datetime.utcnow()
+        tool_status = "success"
+        error_message = None
+    except Exception as exc:
+        result = {"error": str(exc)}
+        pending_action.status = "failed"
+        tool_status = "failed"
+        error_message = str(exc)
+
+    session.add(pending_action)
+    db_tool_call = AgentToolCall(
+        session_id=pending_action.session_id,
+        user_id=current_user.id,
+        tool_name="pending_action_executor",
+        action=pending_action.action_type,
+        input_json=pending_action.payload_json,
+        output_json=result,
+        status=tool_status,
+        error_message=error_message,
+        created_at=datetime.utcnow(),
+    )
+    session.add(db_tool_call)
+
+    message_content = (
+        f"Aksi {pending_action.action_type} berhasil dijalankan."
+        if tool_status == "success"
+        else f"Aksi {pending_action.action_type} gagal dijalankan."
+    )
+    agent_message = AgentMessage(
+        session_id=pending_action.session_id,
+        user_id=current_user.id,
+        role="agent",
+        content=message_content,
+        metadata_json={"pending_action_id": str(pending_action.id), "result": result},
+        created_at=datetime.utcnow(),
+    )
+    session.add(agent_message)
+    session.commit()
+    session.refresh(pending_action)
+
+    if tool_status == "failed":
+        raise HTTPException(status_code=400, detail=result["error"])
+
+    return {
+        "message": "Aksi berhasil dijalankan",
+        "pending_action": pending_action,
+        "result": result,
+    }

@@ -78,12 +78,12 @@ def update_todo(
     current_user: User = Depends(get_current_user)
 ):
     if not isinstance(todo, Todo):
-        db_todo = Todo(**todo.model_dump())
-    else:
-        db_todo = todo
-        
+        raise HTTPException(status_code=400, detail="Update membutuhkan objek ToDo yang sudah ada")
+
+    db_todo = todo
     if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        db_todo.user_id = current_user.id
+        if db_todo.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke ToDo ini")
 
     session.add(db_todo)
     session.commit()

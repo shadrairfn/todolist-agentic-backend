@@ -60,8 +60,11 @@ def login_user(
     return login(response=response, form_data=form_data, session=session)
 
 @router.post("/refresh")
-def refresh(refresh_token: str | None = Cookie(default=None)):
+def refresh(
+    refresh_token: str | None = Cookie(default=None),
+    session: Session = Depends(get_session),
+):
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token tidak ditemukan di cookie")
         
-    return refresh_access_token(refresh_token=refresh_token)
+    return refresh_access_token(refresh_token=refresh_token, session=session)

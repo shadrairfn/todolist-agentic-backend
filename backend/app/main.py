@@ -29,7 +29,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
+    from app.core.config import settings
+
+    if settings.AUTO_CREATE_TABLES:
+        create_db_and_tables()
 
 @app.get("/api/health")
 def read_root():

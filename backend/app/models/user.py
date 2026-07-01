@@ -25,6 +25,7 @@ class User(UserBase, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("gen_random_uuid()")}
     )
+    password: str 
     
     # Relationship
-    todo: List["Todo"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    todos: List["Todo"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})

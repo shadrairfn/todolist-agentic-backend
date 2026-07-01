@@ -15,6 +15,19 @@ from app.models.agents import AgentMessage
 class ChatRequest(BaseModel):
     message: str
 
+
+def _extract_pending_action(tool_calls: list[dict]) -> dict:
+    for tool_call in tool_calls:
+        output_json = tool_call.get("output_json")
+        if isinstance(output_json, dict) and output_json.get("requires_confirmation"):
+            return {
+                "requires_confirmation": True,
+                "pending_action_id": output_json.get("pending_action_id"),
+                "action_type": output_json.get("action_type"),
+                "preview": output_json.get("preview_json"),
+            }
+    return {"requires_confirmation": False}
+
 router = APIRouter(
     prefix="/agentic",      
     tags=["Agentic"]        
@@ -67,7 +80,13 @@ async def chat_endpoint(
     recent_messages = agentic_service.recent_message(session_id, session, current_user)
     recent_tool_calls = agentic_service.recent_tool_calls(session_id, session, current_user)
 
-    hasil_agent = jalankan_agent(request.message, user_id=str(current_user.id), recent_message=recent_messages, recent_tool_calls=recent_tool_calls)
+    hasil_agent = jalankan_agent(
+        request.message,
+        user_id=str(current_user.id),
+        session_id=str(session_id),
+        recent_message=recent_messages,
+        recent_tool_calls=recent_tool_calls,
+    )
     reply_text = hasil_agent["reply"]
     tool_calls = hasil_agent["tool_calls"]
 
@@ -105,11 +124,31 @@ async def chat_endpoint(
 
     session.commit()
 
+    pending_action = _extract_pending_action(tool_calls)
+
     return {
+        "session_id": str(session_id),
         "reply": reply_text,
-        "tool_calls": tool_calls
+        "tool_calls": tool_calls,
+        **pending_action,
     }
 
 @router.get("/session/{session_id}/chat")
 def get_chat_history(session_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
     return agentic_service.get_all_chat_user(session_id, session, current_user)
+
+@router.get("/pending-actions")
+def get_pending_actions(session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.get_pending_actions(session, current_user)
+
+@router.get("/pending-actions/{pending_action_id}")
+def get_pending_action(pending_action_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.get_pending_action_by_id(pending_action_id, session, current_user)
+
+@router.post("/pending-actions/{pending_action_id}/confirm")
+def confirm_pending_action(pending_action_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.confirm_pending_action(pending_action_id, session, current_user)
+
+@router.post("/pending-actions/{pending_action_id}/cancel")
+def cancel_pending_action(pending_action_id: UUID, session: Session= Depends(get_session), current_user: User = Depends(get_current_user)):
+    return agentic_service.cancel_pending_action(pending_action_id, session, current_user)
