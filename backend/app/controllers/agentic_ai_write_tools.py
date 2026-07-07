@@ -6,7 +6,7 @@ from sqlmodel import Session
 from app.controllers.agentic_ai_helpers import (
     clean_optional_text,
     get_user,
-    parse_deadline,
+    parse_datetime,
     parse_uuid,
     serialize_todo,
 )
@@ -20,7 +20,7 @@ def create_todo(
     user_id: str,
     title: str,
     description: str = "",
-    deadline: str = "",
+    due_at: str = "",
     completed: Optional[bool] = None,
     is_daily: Optional[bool] = None,
     is_weekly: Optional[bool] = None,
@@ -40,7 +40,7 @@ def create_todo(
             db_todo = Todo(
                 title=title.strip(),
                 description=clean_optional_text(description),
-                deadline=parse_deadline(deadline),
+                due_at=parse_datetime(due_at),
                 completed=completed if completed is not None else False,
                 is_daily=is_daily if is_daily is not None else False,
                 is_weekly=is_weekly if is_weekly is not None else False,
@@ -60,7 +60,7 @@ def update_todo(
     todo_id: str,
     title: str = "",
     description: str = "",
-    deadline: str = "",
+    due_at: str = "",
     completed: Optional[bool] = None,
 ) -> dict | str:
     """
@@ -71,7 +71,7 @@ def update_todo(
         if not todo_id:
             return "Error: todo_id wajib diisi untuk update."
 
-        update_data = _build_todo_update(title, description, deadline, completed)
+        update_data = _build_todo_update(title, description, due_at, completed)
         if not update_data:
             return "Error: tidak ada field yang perlu diupdate."
 
@@ -91,7 +91,7 @@ def update_todo(
 def _build_todo_update(
     title: str,
     description: str,
-    deadline: str,
+    due_at: str,
     completed: Optional[bool],
 ) -> dict:
     update_data = {}
@@ -99,8 +99,8 @@ def _build_todo_update(
         update_data["title"] = title.strip()
     if description is not None and str(description).strip() != "":
         update_data["description"] = clean_optional_text(description)
-    if deadline is not None and str(deadline).strip() != "":
-        update_data["deadline"] = parse_deadline(deadline)
+    if due_at is not None and str(due_at).strip() != "":
+        update_data["due_at"] = parse_datetime(due_at)
     if completed is not None:
         update_data["completed"] = completed
     return update_data

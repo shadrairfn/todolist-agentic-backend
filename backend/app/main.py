@@ -8,6 +8,8 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.session import create_db_and_tables
+from app.api.label_api import router as labels_router
+from app.api.project_api import router as projects_router
 from app.api.todo_api import router as todos_router 
 from app.api.user_api import router as user_router
 from app.api.agentic_ai_api import router as agentic_ai_router
@@ -42,6 +44,8 @@ def read_root():
     }
 
 app.include_router(todos_router)
+app.include_router(projects_router)
+app.include_router(labels_router)
 app.include_router(user_router)
 app.include_router(agentic_ai_router)
 

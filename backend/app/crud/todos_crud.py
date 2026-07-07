@@ -1,108 +1,51 @@
-from fastapi import Depends, HTTPException
-from sqlmodel import Session, select
-from app.db.session import get_session
-from app.models.todo import Todo, TodoCreate, TodoUpdate
-from app.core.security import get_current_user
-from app.models.user import User
+from typing import Optional
 from uuid import UUID
 
-def read_todos(
-    session: Session = Depends(get_session), 
-    current_user: User = Depends(get_current_user)
-):
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        todos = session.exec(select(Todo).where(Todo.user_id == current_user.id)).all()
-    else:
-        todos = session.exec(select(Todo)).all()
-    return todos
+from sqlmodel import Session, select
+
+from app.models.todo import ChecklistItem, Label, Project, Todo
 
 
-def read_todo(
-    todo_id: UUID, 
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    todo = session.get(Todo, todo_id)
-    if not todo:
-        raise HTTPException(status_code=404, detail="ToDo tidak ditemukan")
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        if todo.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke ToDo ini")
+def list_todos(session: Session, user_id: UUID) -> list[Todo]:
+    return session.exec(select(Todo).where(Todo.user_id == user_id)).all()
+
+
+def get_todo(session: Session, todo_id: UUID) -> Optional[Todo]:
+    return session.get(Todo, todo_id)
+
+
+def save_todo(session: Session, todo: Todo) -> Todo:
+    session.add(todo)
+    session.commit()
+    session.refresh(todo)
     return todo
 
 
-def search_todo(
-    title: str = None, 
-    description: str = None, 
-    deadline: str = None, 
-    completed: bool = False,
-    session: Session = Depends(get_session), 
-    current_user: User = Depends(get_current_user)
-):
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        if title:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.title == title)).all()
-        elif description:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.description == description)).all()
-        elif deadline:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.deadline == deadline)).all()
-        elif completed:
-            todos = session.exec(select(Todo).where(Todo.user_id == current_user.id, Todo.completed == completed)).all()
-    else:
-        raise HTTPException(status_code=404, detail="User tidak ditemukan")
-    return todos
-
-
-def create_todo(
-    todo: TodoCreate, 
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    if not isinstance(todo, Todo):
-        db_todo = Todo(**todo.model_dump())
-    else:
-        db_todo = todo
-        
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        db_todo.user_id = current_user.id
-        
-    session.add(db_todo)
+def delete_todo(session: Session, todo: Todo) -> None:
+    session.delete(todo)
     session.commit()
-    session.refresh(db_todo)
-    return db_todo
 
 
-def update_todo(
-    todo: TodoUpdate, 
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    if not isinstance(todo, Todo):
-        raise HTTPException(status_code=400, detail="Update membutuhkan objek ToDo yang sudah ada")
-
-    db_todo = todo
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        if db_todo.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke ToDo ini")
-
-    session.add(db_todo)
-    session.commit()
-    session.refresh(db_todo)
-    return db_todo
+def list_projects(session: Session, user_id: UUID) -> list[Project]:
+    return session.exec(select(Project).where(Project.user_id == user_id)).all()
 
 
-def delete_todo(
-    todo_id: UUID, 
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user)
-):
-    """Hapus todo berdasarkan UUID — dicari dari DB terlebih dahulu."""
-    db_todo = session.get(Todo, todo_id)
-    if not db_todo:
-        raise HTTPException(status_code=404, detail="ToDo tidak ditemukan")
-    if current_user and (isinstance(current_user, User) or type(current_user).__name__ == "User" or hasattr(current_user, "id")):
-        if db_todo.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke ToDo ini")
-    session.delete(db_todo)
-    session.commit()
-    return {"message": f"ToDo '{db_todo.title}' berhasil dihapus"}
+def get_project(session: Session, project_id: UUID) -> Optional[Project]:
+    return session.get(Project, project_id)
+
+
+def list_labels(session: Session, user_id: UUID) -> list[Label]:
+    return session.exec(select(Label).where(Label.user_id == user_id)).all()
+
+
+def get_label(session: Session, label_id: UUID) -> Optional[Label]:
+    return session.get(Label, label_id)
+
+
+def get_checklist_item(session: Session, item_id: UUID) -> Optional[ChecklistItem]:
+    return session.get(ChecklistItem, item_id)
+
+
+def list_checklist_items(session: Session, todo_id: UUID) -> list[ChecklistItem]:
+    statement = select(ChecklistItem).where(ChecklistItem.todo_id == todo_id).order_by(ChecklistItem.position)
+    return session.exec(statement).all()

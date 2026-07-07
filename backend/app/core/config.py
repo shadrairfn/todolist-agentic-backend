@@ -18,5 +18,7 @@ class Settings:
 
     # Groq API Key (optional for other features, but good to have here if needed)
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
 
 settings = Settings()

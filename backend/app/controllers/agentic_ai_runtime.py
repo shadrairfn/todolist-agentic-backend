@@ -4,6 +4,7 @@ from langchain_classic.agents import AgentExecutor, create_tool_calling_agent
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_groq import ChatGroq
 from sqlmodel import Session, select
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.controllers.agentic_ai_tools import TOOLS
 from app.core.config import settings
@@ -21,10 +22,18 @@ SYSTEM_PROMPT = (
     "gunakan request_delete_todo_confirmation atau request_bulk_delete_todos_confirmation. "
     "Saat membuat confirmation request, selalu kirim session_id aktif ke tool. "
     "Jika tool mengembalikan requires_confirmation=true, jelaskan preview aksi dan minta user mengonfirmasi."
+    "Jika user meminta untuk dibuatkan banyak jadwal, lakukan perulangan untuk memanggil masing-masing tool yang dibutuhkan"
 )
 
 
-llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0, api_key=settings.GROQ_API_KEY)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash", # You can change this to "deepseek-reasoner" for R1
+    temperature=0,
+    api_key=settings.GOOGLE_API_KEY,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2,
+)
 prompt = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_PROMPT),
@@ -109,7 +118,16 @@ def jalankan_agent(
     )
     response = agent_executor.invoke({"input": context_message})
 
+    reply_data = response.get("output", "")
+    if isinstance(reply_data, list):
+        reply_text = "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in reply_data
+        )
+    else:
+        reply_text = str(reply_data)
+
     return {
-        "reply": response["output"],
+        "reply": reply_text,
         "tool_calls": _extract_tool_calls(response),
     }

@@ -1,0 +1,8 @@
+Alembic migration environment.
+
+Common commands:
+
+    alembic revision --autogenerate -m "describe change"
+    alembic upgrade head
+
+Set AUTO_CREATE_TABLES=false in production and run migrations before starting the API.

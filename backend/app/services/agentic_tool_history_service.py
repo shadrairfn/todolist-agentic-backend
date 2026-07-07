@@ -49,7 +49,7 @@ def _normalize_tool_call_metadata(tool_call) -> list[dict]:
                     "tool_name": data.get("tool_name"),
                     "action": input_json.get("action_method"),
                     "title": out_item.get("title"),
-                    "deadline": out_item.get("deadline"),
+                    "due_at": out_item.get("due_at"),
                     "completed": out_item.get("completed"),
                     "created_at": tool_call.created_at,
                 }

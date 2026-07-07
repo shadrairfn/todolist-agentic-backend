@@ -15,12 +15,12 @@ def parse_uuid(value: str, field_name: str) -> UUID:
         raise ValueError(f"Format {field_name} tidak valid: {value}")
 
 
-def parse_deadline(deadline: str | None) -> datetime | None:
-    if not deadline:
+def parse_datetime(date_str: str | None) -> datetime | None:
+    if not date_str:
         return None
 
-    deadline_str = str(deadline).strip()
-    if deadline_str == "" or deadline_str.lower() in ("none", "null", "current_date"):
+    date_val = str(date_str).strip()
+    if date_val == "" or date_val.lower() in ("none", "null", "current_date"):
         return None
 
     for fmt in (
@@ -31,13 +31,13 @@ def parse_deadline(deadline: str | None) -> datetime | None:
         "%Y-%m-%d",
     ):
         try:
-            return datetime.strptime(deadline_str, fmt)
+            return datetime.strptime(date_val, fmt)
         except ValueError:
             continue
 
     for fmt in ("%H:%M:%S", "%H:%M"):
         try:
-            parsed_time = datetime.strptime(deadline_str, fmt).time()
+            parsed_time = datetime.strptime(date_val, fmt).time()
             return datetime.combine(date.today(), parsed_time)
         except ValueError:
             continue
@@ -45,7 +45,7 @@ def parse_deadline(deadline: str | None) -> datetime | None:
     try:
         from dateutil import parser
 
-        return parser.parse(deadline_str)
+        return parser.parse(date_val)
     except Exception:
         return None
 
@@ -64,7 +64,8 @@ def serialize_todo(todo: Todo) -> dict:
         "id": str(todo.id),
         "title": todo.title,
         "description": todo.description,
-        "deadline": str(todo.deadline) if todo.deadline else None,
+        "start_at": str(todo.start_at) if todo.start_at else None,
+        "due_at": str(todo.due_at) if todo.due_at else None,
         "completed": todo.completed,
         "is_daily": todo.is_daily,
         "is_weekly": todo.is_weekly,

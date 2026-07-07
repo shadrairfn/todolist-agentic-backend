@@ -195,9 +195,92 @@ Semua rute API mengembalikan respons JSON. Rute bertanda 🔒 memerlukan Header 
 - **Method & URL**: `DELETE /todos/{todo_id}`
 - **Respons (200 OK)**: `{"message": "Todo deleted successfully"}`
 
+#### 6. Field Task Management Baru
+ToDo sekarang mendukung field berikut tanpa menghapus kompatibilitas lama:
+
+```json
+{
+  "title": "Review roadmap",
+  "description": "Siapkan prioritas Q3",
+  "deadline": "2026-07-10T09:00:00",
+  "due_at": "2026-07-10T09:00:00",
+  "reminder_at": "2026-07-09T09:00:00",
+  "priority": "high",
+  "status": "in_progress",
+  "project_id": "uuid-project-opsional"
+}
+```
+
+- `priority`: `low`, `medium`, `high`, `urgent` (default `medium`).
+- `status`: `todo`, `in_progress`, `done`, `archived`.
+- `completed` tetap tersedia. Jika `completed=true`, status disinkronkan menjadi `done`; jika status diubah dari `done`, `completed` menjadi `false`.
+- `deadline` tetap didukung sebagai field lama, sedangkan `due_at` menjadi fondasi due date baru. Saat salah satu dikirim, service menyinkronkan keduanya.
+
+#### 7. Search & Filter Task
+- **Method & URL**: `GET /todos/?q=roadmap&project_id=<uuid>&label_id=<uuid>&status=in_progress&priority=high`
+- **Overdue**: `GET /todos/overdue` atau `GET /todos/?overdue=true`
+- **Due today**: `GET /todos/due-today` atau `GET /todos/?due_today=true`
+- **By label**: `GET /todos/by-label/{label_id}` atau `GET /labels/{label_id}/todos`
+
+#### 8. Checklist/Subtask
+- **Create**: `POST /todos/{todo_id}/checklist`
+  ```json
+  {
+    "title": "Buat outline",
+    "completed": false,
+    "position": 1
+  }
+  ```
+- **List**: `GET /todos/{todo_id}/checklist`
+- **Update**: `PATCH /todos/{todo_id}/checklist/{item_id}`
+- **Delete**: `DELETE /todos/{todo_id}/checklist/{item_id}`
+- **Progress**: `GET /todos/{todo_id}/checklist-progress`
+  ```json
+  {
+    "todo_id": "uuid",
+    "progress": 0.5
+  }
+  ```
+
+### C. Endpoint Project (`/projects`)
+
+- `POST /projects/`
+- `GET /projects/`
+- `GET /projects/{project_id}`
+- `PATCH /projects/{project_id}`
+- `DELETE /projects/{project_id}`
+- `GET /projects/{project_id}/todos`
+
+Contoh create project:
+```json
+{
+  "name": "Productivity Workspace",
+  "description": "Roadmap dan task utama"
+}
+```
+
+### D. Endpoint Label/Tag (`/labels`)
+
+- `POST /labels/`
+- `GET /labels/`
+- `GET /labels/{label_id}`
+- `PATCH /labels/{label_id}`
+- `DELETE /labels/{label_id}`
+- `GET /labels/{label_id}/todos`
+- Attach label ke todo: `POST /todos/{todo_id}/labels/{label_id}`
+- Detach label dari todo: `DELETE /todos/{todo_id}/labels/{label_id}`
+
+Contoh create label:
+```json
+{
+  "name": "Focus",
+  "color": "#ffcc00"
+}
+```
+
 ---
 
-### C. Endpoint AI Agent (`/agentic`)
+### E. Endpoint AI Agent (`/agentic`)
 
 #### 1. Berkomunikasi dengan AI Agent 🔒
 - **Method & URL**: `POST /agentic/chat`
