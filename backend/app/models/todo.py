@@ -20,8 +20,8 @@ class TodoStatus(str, Enum):
 
 
 class TodoLabelLink(SQLModel, table=True):
-    todo_id: UUID = Field(foreign_key="todo.id", primary_key=True)
-    label_id: UUID = Field(foreign_key="label.id", primary_key=True)
+    todo_id: UUID = Field(foreign_key="todo.id", ondelete="CASCADE", primary_key=True)
+    label_id: UUID = Field(foreign_key="label.id", ondelete="CASCADE", primary_key=True)
 
 
 class ProjectBase(SQLModel):
@@ -37,7 +37,7 @@ class Project(ProjectBase, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
-    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", index=True)
+    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", ondelete="CASCADE", index=True)
 
     todos: List["Todo"] = Relationship(back_populates="project")
 
@@ -55,7 +55,7 @@ class Label(LabelBase, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
-    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", index=True)
+    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", ondelete="CASCADE", index=True)
 
     todos: List["Todo"] = Relationship(back_populates="labels", link_model=TodoLabelLink)
 
@@ -74,7 +74,7 @@ class ChecklistItem(ChecklistItemBase, table=True):
         nullable=False,
         sa_column_kwargs={"server_default": text("gen_random_uuid()")},
     )
-    todo_id: UUID = Field(foreign_key="todo.id", index=True)
+    todo_id: UUID = Field(foreign_key="todo.id", ondelete="CASCADE", index=True)
 
     todo: Optional["Todo"] = Relationship(back_populates="checklist_items")
 
@@ -94,7 +94,7 @@ class TodoBase(SQLModel):
         default=TodoPriority.medium,
         sa_column=Column(String, nullable=False, server_default=TodoPriority.medium.value),
     )
-    project_id: Optional[UUID] = Field(default=None, foreign_key="project.id", index=True)
+    project_id: Optional[UUID] = Field(default=None, foreign_key="project.id", ondelete="CASCADE", index=True)
     is_daily: bool = Field(default=False)
     is_weekly: bool = Field(default=False)
     is_monthly: bool = Field(default=False)
@@ -107,6 +107,7 @@ class TodoUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
     deadline: Optional[datetime] = None
+    start_at: Optional[datetime] = None
     due_at: Optional[datetime] = None
     reminder_at: Optional[datetime] = None
     completed: Optional[bool] = None
@@ -128,7 +129,7 @@ class Todo(TodoBase, table=True):
     )
     
     # Kunci tamu didefinisikan secara khusus di model tabel database
-    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id")
+    user_id: Optional[UUID] = Field(default=None, foreign_key="user.id", ondelete="CASCADE")
     
     # Relationship
     user: Optional["User"] = Relationship(back_populates="todos")

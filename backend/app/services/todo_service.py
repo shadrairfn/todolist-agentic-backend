@@ -76,6 +76,7 @@ def filter_todos(
     if due_this_week:
         start, end = _week_bounds()
         statement = statement.where(Todo.due_at >= start, Todo.due_at < end)
+    statement = statement.order_by(Todo.start_at)
     return _with_progress(session.exec(statement).all())
 
 

@@ -1,3 +1,4 @@
+from app.models.todo import TodoPriority
 from typing import Optional
 
 from langchain_core.tools import tool
@@ -20,7 +21,10 @@ def create_todo(
     user_id: str,
     title: str,
     description: str = "",
+    start_at: str = "",
     due_at: str = "",
+    reminder_at: str = "",
+    priority: Optional[TodoPriority] = None,
     completed: Optional[bool] = None,
     is_daily: Optional[bool] = None,
     is_weekly: Optional[bool] = None,
@@ -40,7 +44,10 @@ def create_todo(
             db_todo = Todo(
                 title=title.strip(),
                 description=clean_optional_text(description),
+                start_at=parse_datetime(start_at),
                 due_at=parse_datetime(due_at),
+                reminder_at=parse_datetime(reminder_at),
+                priority=priority if priority is not None else TodoPriority.medium,
                 completed=completed if completed is not None else False,
                 is_daily=is_daily if is_daily is not None else False,
                 is_weekly=is_weekly if is_weekly is not None else False,
@@ -60,7 +67,10 @@ def update_todo(
     todo_id: str,
     title: str = "",
     description: str = "",
+    start_at: str = "",
     due_at: str = "",
+    reminder_at: str = "",
+    priority: Optional[TodoPriority] = None,
     completed: Optional[bool] = None,
 ) -> dict | str:
     """
@@ -71,7 +81,7 @@ def update_todo(
         if not todo_id:
             return "Error: todo_id wajib diisi untuk update."
 
-        update_data = _build_todo_update(title, description, due_at, completed)
+        update_data = _build_todo_update(title, description, start_at, due_at, reminder_at, priority, completed)
         if not update_data:
             return "Error: tidak ada field yang perlu diupdate."
 
@@ -91,7 +101,10 @@ def update_todo(
 def _build_todo_update(
     title: str,
     description: str,
+    start_at: str,
     due_at: str,
+    reminder_at: str,
+    priority: Optional[TodoPriority],
     completed: Optional[bool],
 ) -> dict:
     update_data = {}
@@ -99,8 +112,14 @@ def _build_todo_update(
         update_data["title"] = title.strip()
     if description is not None and str(description).strip() != "":
         update_data["description"] = clean_optional_text(description)
+    if start_at is not None and str(start_at).strip() != "":
+        update_data["start_at"] = parse_datetime(start_at)
     if due_at is not None and str(due_at).strip() != "":
         update_data["due_at"] = parse_datetime(due_at)
+    if reminder_at is not None and str(reminder_at).strip() != "":
+        update_data["reminder_at"] = parse_datetime(reminder_at)
+    if priority is not None:
+        update_data["priority"] = priority
     if completed is not None:
         update_data["completed"] = completed
     return update_data

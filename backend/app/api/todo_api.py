@@ -40,7 +40,7 @@ def due_today_todos(
 
 
 @router.post("/", response_model=TodoRead)
-def create_todo(
+def create_todo( 
     todo: TodoCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),

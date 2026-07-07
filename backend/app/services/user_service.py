@@ -1,11 +1,10 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from uuid import UUID
 from fastapi import Response
 from app.core.config import settings
 from app.core.hashing import get_password_hash, verify_password
-from app.core.security import create_token, get_current_user
+from app.core.security import create_token, get_current_user 
 from app.db.session import get_session
 from app.models.dto.user_dto import PasswordChangeRequest, ProfileUpdateRequest
 from app.models.user import User, UserCreate, UserRead, UserLogin
@@ -34,13 +33,13 @@ def login(
     data: UserLogin,
     session: Session = Depends(get_session),
 ):
-    statement = select(User).where(User.email == data.name)
+    statement = select(User).where(User.name == data.name)
     db_user = session.exec(statement).first()
 
     if not db_user or not verify_password(data.password, db_user.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email atau password salah",
+            detail="Username atau password salah",
         )
  
     access_token = create_token(data={"sub": str(db_user.id)})
