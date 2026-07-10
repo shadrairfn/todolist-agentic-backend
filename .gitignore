@@ -1,5 +1,4 @@
 .env
-frontend-react/
 frontend/
 .venv/
 alembic.ini
@@ -11,4 +10,4 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .mypy_cache/
-
+whatsapp_bot/

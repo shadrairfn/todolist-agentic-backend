@@ -100,6 +100,14 @@ class TodoBase(SQLModel):
     is_monthly: bool = Field(default=False)
     is_yearly: bool = Field(default=False)
 
+    @property
+    def deadline(self) -> Optional[datetime]:
+        return self.due_at
+
+    @deadline.setter
+    def deadline(self, value: Optional[datetime]) -> None:
+        self.due_at = value
+
 class TodoCreate(TodoBase):
     pass 
 

@@ -93,6 +93,10 @@ def create_todo(todo: TodoCreate | Todo, session: Session, current_user: User):
 def update_todo(todo_id: UUID, todo: TodoUpdate, session: Session, current_user: User):
     db_todo = _get_owned_todo(todo_id, session, current_user)
     update_data = todo.model_dump(exclude_unset=True)
+    if "deadline" in update_data:
+        deadline = update_data.pop("deadline")
+        update_data.setdefault("due_at", deadline)
+
     if "project_id" in update_data:
         _validate_project(update_data["project_id"], session, current_user)
 

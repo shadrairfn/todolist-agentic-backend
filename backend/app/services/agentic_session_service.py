@@ -41,6 +41,35 @@ def create_sessions(
     return new_session
 
 
+def get_or_create_whatsapp_session(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    # Cari session yang is_whatsapp = True untuk user ini
+    existing_session = (
+        session.query(AgentSession)
+        .filter(
+            AgentSession.user_id == current_user.id,
+            AgentSession.is_whatsapp == True,
+        )
+        .first()
+    )
+    if existing_session:
+        return existing_session
+
+    # Jika tidak ada, buat baru
+    new_session = AgentSession(
+        title="WhatsApp Assistant",
+        user_id=current_user.id,
+        is_whatsapp=True,
+        created_at=datetime.utcnow(),
+    )
+    session.add(new_session)
+    session.commit()
+    session.refresh(new_session)
+    return new_session
+
+
 def get_all_sessions(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),

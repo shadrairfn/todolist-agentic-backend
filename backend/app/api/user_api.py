@@ -17,11 +17,67 @@ from app.services.user_service import (
 )
 from app.core.security import refresh_access_token
 
+from pydantic import BaseModel
+from sqlmodel import select
+import re
+
+class LinkWhatsAppRequest(BaseModel):
+    whatsapp_number: str
+
 router = APIRouter(
     prefix="/users",
     tags=["Users"],
 )
 
+@router.post("/link-whatsapp")
+def link_whatsapp(
+    data: LinkWhatsAppRequest,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    normalized_number = _normalize_whatsapp_number(data.whatsapp_number)
+    if not normalized_number:
+        raise HTTPException(status_code=400, detail="Nomor WhatsApp tidak valid")
+
+    current_user.whatsapp_number = normalized_number
+    try:
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+        return {"status": "success", "message": "Nomor WhatsApp berhasil ditautkan"}
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="Nomor WhatsApp sudah digunakan oleh akun lain")
+
+@router.get("/internal/by-whatsapp/{number}", response_model=UserRead)
+def get_user_by_whatsapp(number: str, session: Session = Depends(get_session)):
+    user = None
+    for candidate in _whatsapp_number_candidates(number):
+        user = session.exec(select(User).where(User.whatsapp_number == candidate)).first()
+        if user:
+            break
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+def _normalize_whatsapp_number(value: str | None) -> str:
+    if not value:
+        return ""
+
+    cleaned = value.strip().split(":")[0].split("@")[0]
+    return re.sub(r"\D+", "", cleaned)
+
+
+def _whatsapp_number_candidates(value: str | None) -> list[str]:
+    normalized = _normalize_whatsapp_number(value)
+    if not normalized:
+        return []
+
+    candidates = [normalized]
+    if normalized.startswith("0"):
+        candidates.append(f"62{normalized[1:]}")
+    return list(dict.fromkeys(candidates))
 
 @router.get("/me", response_model=UserRead)
 def read_current_user(current_user: User = Depends(get_current_user)):

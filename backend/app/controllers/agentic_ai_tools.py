@@ -1,4 +1,5 @@
 from app.controllers.agentic_ai_confirmation_tools import (
+    request_confirmation,
     request_bulk_delete_todos_confirmation,
     request_delete_todo_confirmation,
 )
@@ -11,6 +12,7 @@ TOOLS = [
     search_todos,
     create_todo,
     update_todo,
+    request_confirmation,
     request_delete_todo_confirmation,
     request_bulk_delete_todos_confirmation,
 ]
@@ -21,6 +23,7 @@ __all__ = [
     "search_todos",
     "create_todo",
     "update_todo",
+    "request_confirmation",
     "request_delete_todo_confirmation",
     "request_bulk_delete_todos_confirmation",
 ]

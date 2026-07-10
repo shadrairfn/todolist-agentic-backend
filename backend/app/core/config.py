@@ -20,5 +20,8 @@ class Settings:
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+    AGENT_MAX_OUTPUT_TOKENS: int = int(os.getenv("AGENT_MAX_OUTPUT_TOKENS", 512))
+    AGENT_RECENT_MESSAGE_LIMIT: int = int(os.getenv("AGENT_RECENT_MESSAGE_LIMIT", 2))
+    AGENT_RECENT_TOOL_CALL_LIMIT: int = int(os.getenv("AGENT_RECENT_TOOL_CALL_LIMIT", 2))
 
 settings = Settings()

@@ -17,6 +17,7 @@ class AgentSessionUpdate(AgentSessionBase):
 class AgentSession(AgentSessionBase, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="user.id", ondelete="CASCADE", index=True)
+    is_whatsapp: bool = Field(default=False)
 
 class AgentMessageBase(SQLModel):
     session_id: UUID = Field(foreign_key="agentsession.id", ondelete="CASCADE", index=True)

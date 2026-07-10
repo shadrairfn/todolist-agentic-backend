@@ -8,6 +8,7 @@ from app.services.agentic_session_service import (
     update_session,
     recent_message,
     recent_tool_calls,
+    get_or_create_whatsapp_session,
 )
 from app.services.pending_action_service import (
     cancel_pending_action,
@@ -32,4 +33,5 @@ __all__ = [
     "get_pending_action_by_id",
     "cancel_pending_action",
     "confirm_pending_action",
+    "get_or_create_whatsapp_session",
 ]

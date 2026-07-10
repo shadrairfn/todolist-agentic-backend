@@ -13,6 +13,8 @@ from app.api.project_api import router as projects_router
 from app.api.todo_api import router as todos_router 
 from app.api.user_api import router as user_router
 from app.api.agentic_ai_api import router as agentic_ai_router
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 
 app = FastAPI(
     title="Premium ToDo List API",
@@ -27,7 +29,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.on_event("startup")
 def on_startup():

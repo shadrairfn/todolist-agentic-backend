@@ -60,6 +60,7 @@ class TodoRead(SQLModel):
     description: Optional[str] = None
     start_at: Optional[datetime] = None
     due_at: Optional[datetime] = None
+    deadline: Optional[datetime] = None
     reminder_at: Optional[datetime] = None
     completed: bool
     status: TodoStatus

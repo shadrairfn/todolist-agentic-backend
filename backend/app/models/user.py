@@ -5,6 +5,7 @@ from sqlmodel import SQLModel, Field, Relationship, text
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True)
     name: Optional[str] = None
+    whatsapp_number: Optional[str] = Field(default=None, unique=True, index=True)
 
 class UserLogin(SQLModel):
     name: Optional[str] = None
@@ -20,6 +21,7 @@ class UserUpdate(SQLModel):
     email: Optional[str] = None
     password: Optional[str] = None
     name: Optional[str] = None
+    whatsapp_number: Optional[str] = None
 
 class User(UserBase, table=True):
     id: Optional[UUID] = Field(

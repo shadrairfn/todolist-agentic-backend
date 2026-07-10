@@ -13,6 +13,44 @@ from app.services import todo_service
 
 
 @tool
+def request_confirmation(
+    user_id: str = "",
+    session_id: str = "",
+    action_type: str = "",
+    todo_id: str = "",
+    todo_ids: str = "",
+) -> dict | str:
+    """
+    Alias kompatibilitas untuk membuat proposal konfirmasi. Tool ini TIDAK mengeksekusi aksi.
+    Untuk delete satu ToDo, isi todo_id. Untuk bulk delete, isi todo_ids dengan daftar UUID dipisah koma.
+    """
+    normalized_action = action_type.strip().lower()
+
+    if todo_ids or normalized_action in {"bulk_delete_todos", "bulk_delete", "delete_many"}:
+        return request_bulk_delete_todos_confirmation.invoke(
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "todo_ids": todo_ids,
+            }
+        )
+
+    if todo_id or normalized_action in {"delete_todo", "delete"}:
+        return request_delete_todo_confirmation.invoke(
+            {
+                "user_id": user_id,
+                "session_id": session_id,
+                "todo_id": todo_id,
+            }
+        )
+
+    return (
+        "Error: request_confirmation membutuhkan action_type dan todo_id/todo_ids. "
+        "Cari ToDo terlebih dahulu dengan list_todos/search_todos, lalu panggil tool konfirmasi yang sesuai."
+    )
+
+
+@tool
 def request_delete_todo_confirmation(user_id: str, session_id: str, todo_id: str) -> dict | str:
     """
     Buat proposal konfirmasi untuk menghapus satu ToDo. Tool ini TIDAK menghapus data.
